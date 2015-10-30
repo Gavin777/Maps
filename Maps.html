@@ -3,7 +3,7 @@
   <head>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
-    <title>Displaying text directions with <code>setPanel()</code></title>
+    <title>Coffee and Donuts to Clicktime</title>
     <style>
       html, body {
         height: 100%;
@@ -14,16 +14,26 @@
         height: 100%;
       }
 
-      #search {
+      #route {
         cursor: pointer;
+        margin-top: 5px;
+      }
+
+      #reset-waypoints {
+        cursor: pointer;
+        text-align: center;
+        margin-top: 10px;
+        width: 100%;
       }
 
       .button {
-        border: 2px solid rgba(33, 68, 72, 0.59);
+        border: 2px solid rgba(30, 70, 70, 0.6);
+        transition: .5s;
       }
 
       .button:hover {
-        border: -2px;
+        border-color: rgba(20, 60, 50, 1);
+        transition: .5s;
       }
 
       #floating-panel {
@@ -79,6 +89,48 @@
         display: none;
       }
 
+      .controls {
+        margin-top: 10px;
+        border: 1px solid transparent;
+        border-radius: 2px 0 0 2px;
+        box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        height: 32px;
+        outline: none;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+
+      #pac-input {
+        background-color: #fff;
+        font-family: Roboto;
+        font-size: 15px;
+        font-weight: 300;
+        margin-left: 12px;
+        padding: 0 11px 0 13px;
+        text-overflow: ellipsis;
+        width: 300px;
+      }
+
+      #pac-input:focus {
+        border-color: #4d90fe;
+      }
+
+      .pac-container {
+        font-family: Roboto;
+      }
+
+      #type-selector {
+        color: #fff;
+        background-color: #4d90fe;
+        padding: 5px 11px 0px 11px;
+      }
+
+      #type-selector label {
+        font-family: Roboto;
+        font-size: 13px;
+        font-weight: 300;
+      }
+
       @media print {
         #map {
           height: 500px;
@@ -101,126 +153,187 @@
       <strong>End:</strong>
       Clicktime Office
       <br>
-      <div id = "search" class = "button"> <strong>Search!</strong> </div>
+
+      <strong>Mode of Travel: </strong>
+      <select id="mode">
+        <option value="BICYCLING">Bicycling</option>
+        <option value="DRIVING">Driving</option>
+        <option value="WALKING">Walking</option>
+        <option value="TRANSIT">Transit</option>
+      </select>
+      <br>
+      <input id="pac-input" class="controls" type="text" placeholder="Find stops on your way! (ex. coffee)">
+      <div id = "reset-waypoints" class = "button"> Reset waypoints </div>
+      <div id = "route" class = "button"> <strong>Route!</strong> </div>
     </div>
     <div id="right-panel"></div>
     <div id="map"></div>
     <script>
 
-var pos;
-var map;
-var service;
-function initMap() {
-  var directionsDisplay = new google.maps.DirectionsRenderer;
-  var directionsService = new google.maps.DirectionsService;
-  map = new google.maps.Map(document.getElementById('map'), {
-    zoom: 7,
-    center: {lat: 41.85, lng: -87.65}
-  });
-  directionsDisplay.setMap(map);
-  directionsDisplay.setPanel(document.getElementById('right-panel'));
+      var pos;
+      var map;
+      var service;
+      var infoWindow;
+      var items = []; //Storing waypoints, resets upon click of Reset Waypoints
 
-  var control = document.getElementById('floating-panel');
-  control.style.display = 'block';
-  map.controls[google.maps.ControlPosition.TOP_CENTER].push(control);
+      // Initializes map at location of user. Creates search bar for waypoints
 
-    var infoWindow = new google.maps.InfoWindow({map: map});
+      function initMap() {
+        var directionsDisplay = new google.maps.DirectionsRenderer;
+        var directionsService = new google.maps.DirectionsService;
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 14,
+          center: {lat: 41.85, lng: -87.65}
+        });
+        directionsDisplay.setMap(map);
+        directionsDisplay.setPanel(document.getElementById('right-panel'));
 
-  // Try HTML5 geolocation.
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(position) {
-      pos = {
-        lat: position.coords.latitude,
-        lng: position.coords.longitude
-      };
+        var control = document.getElementById('floating-panel');
+        control.style.display = 'block';
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(control);
 
-      infoWindow.setPosition(pos);
-      infoWindow.setContent('Location found.');
-      map.setCenter(pos);
-    }, function() {
-      handleLocationError(true, infoWindow, map.getCenter());
-    });
-  } else {
-    // Browser doesn't support Geolocation
-    handleLocationError(false, infoWindow, map.getCenter());
-  }
+          infoWindow = new google.maps.InfoWindow({map: map});
 
-  var request = {
-    location: "282 2nd Street 4th floor, San Francisco, CA 94105",
-    radius: '500',
-    query: 'coffee'
-  };
+        // Try HTML5 geolocation.
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            pos = {
+              lat: position.coords.latitude,
+              lng: position.coords.longitude
+            };
 
-  service = new google.maps.places.PlacesService(map);
-  service.textSearch(request, callback);
-
-
-
-  var onClickHandler = function() {
-    calculateAndDisplayRoute(directionsService, directionsDisplay);
-  };
-
-  document.getElementById('search').addEventListener('click', onClickHandler);
-}
-
-function createMarker(place) {
-
-    new google.maps.Marker({
-        position: place.geometry.location,
-        map: map
-    });
-}
-
-function handleLocationError(browserHasGeolocation, infoWindow, pos) {
-  infoWindow.setPosition(pos);
-  infoWindow.setContent(browserHasGeolocation ?
-                        'Error: The Geolocation service failed.' :
-                        'Error: Your browser doesn\'t support geolocation.');
-}
-
-
-function callback(results, status) {
-  if (status == google.maps.places.PlacesServiceStatus.OK) {
-    for (var i = 0; i < results.length; i++) {
-      var place = results[i];
-      createMarker(results[i]);
-    }
-  }
-}
-
-
-function calculateAndDisplayRoute(directionsService, directionsDisplay) {
-  var start = pos;
-  var end = "282 2nd Street 4th floor, San Francisco, CA 94105";
-
-  var items = ["donuts", "coffee"];
-  var waypoints = [];
-  for (var i = 0; i < items.length; i++) {
-      var address = items[i];
-      if (address !== "") {
-          waypoints.push({
-              location: address,
-              stopover: true
+            infoWindow.setPosition(pos);
+            infoWindow.setContent('Current Location!');
+            map.setCenter(pos);
+          }, function() {
+            handleLocationError(true, infoWindow, map.getCenter());
           });
+        } else {
+          // Browser doesn't support Geolocation
+          handleLocationError(false, infoWindow, map.getCenter());
+        }
+       // Create the search box and link it to the UI element.
+        var input = document.getElementById('pac-input');
+        var searchBox = new google.maps.places.SearchBox(input);
+
+        // Bias the SearchBox results towards current map's viewport.
+        map.addListener('bounds_changed', function() {
+          searchBox.setBounds(map.getBounds());
+        });
+
+        var markers = [];
+        // [START region_getplaces]
+        // Listen for the event fired when the user selects a prediction and retrieve
+        // more details for that place.
+        searchBox.addListener('places_changed', function() {
+          var places = searchBox.getPlaces();
+
+          if (places.length == 0) {
+            return;
+          }
+
+          // Clear out the old markers.
+          markers.forEach(function(marker) {
+            marker.setMap(null);
+          });
+          markers = [];
+
+          // For each place, get the icon, name and location.
+          var bounds = new google.maps.LatLngBounds();
+          places.forEach(function(place) {
+            var icon = {
+              url: place.icon,
+              size: new google.maps.Size(71, 71),
+              origin: new google.maps.Point(0, 0),
+              anchor: new google.maps.Point(17, 34),
+              scaledSize: new google.maps.Size(25, 25)
+            };
+
+            var mark = new google.maps.Marker({
+              map: map,
+              icon: icon,
+              title: place.name,
+              position: place.geometry.location
+            })
+
+            // Create a marker for each place.
+            markers.push(mark);
+            //Handle events. 
+            // Single click to open up name of place
+            google.maps.event.addListener(mark, 'click', function() {
+              infoWindow.setContent(mark.title + "<br>" + "Double click to add to waypoints");
+              infoWindow.open(map, mark);
+            });
+            //Double click to add place to waypoints
+            google.maps.event.addListener(mark, 'dblclick', function() {
+              items.push(mark.position); 
+            });
+           
+            if (place.geometry.viewport) {
+              // Only geocodes have viewport.
+              bounds.union(place.geometry.viewport);
+            } else {
+              bounds.extend(place.geometry.location);
+            }
+          });
+          map.fitBounds(bounds);
+          
+        });
+        // For routing
+        var onClickHandler = function() {
+          calculateAndDisplayRoute(directionsService, directionsDisplay);
+        };
+        //reset waypoints
+        document.getElementById('reset-waypoints').addEventListener('click', function() {
+          items = [];
+        });
+        //Calls onClickHandler to start routing
+        document.getElementById('route').addEventListener('click', onClickHandler); 
       }
-  }
 
-  directionsService.route({
-    origin: start,
-    destination: end,
-    waypoints: waypoints,
-    optimizeWaypoints: true, // The order of getting donuts or coffee doesn't matter. Find optimal route
-    travelMode: google.maps.TravelMode.WALKING
-  }, function(response, status) {
-    if (status === google.maps.DirectionsStatus.OK) {
-      directionsDisplay.setDirections(response);
-    } else {
-      window.alert('Directions request failed due to ' + status);
-    }
-  });
+      function handleLocationError(browserHasGeolocation, infoWindow, pos) {
+        infoWindow.setPosition(pos);
+        infoWindow.setContent(browserHasGeolocation ?
+                              'Error: The Geolocation service failed.' :
+                              'Error: Your browser doesn\'t support geolocation.');
+      }
+
+      // End of Init function
 
 
-}
+      function calculateAndDisplayRoute(directionsService, directionsDisplay) {
+        var start = pos;
+        var end = "282 2nd Street 4th floor, San Francisco, CA 94105";
+        var prev; // To account for accidental multi clicking. Does not add to waypoints if current is same as prev
+        var waypoints = [];
+        for (var i = 0; i < items.length; i++) {
+            var address = items[i];
+            if (address !== "" && prev !== address) {
+                waypoints.push({
+                    location: address,
+                    stopover: true
+                });
+            }
+            prev = address;
+        }
+        var selectedMode = document.getElementById('mode').value;
+
+        directionsService.route({
+          origin: start,
+          destination: end,
+          waypoints: waypoints,
+          optimizeWaypoints: true, // The order of getting donuts or coffee doesn't matter. Find optimal route
+          travelMode: google.maps.TravelMode[selectedMode]
+        }, function(response, status) {
+          if (status === google.maps.DirectionsStatus.OK) {
+            directionsDisplay.setDirections(response);
+          } else {
+            window.alert('Directions request failed due to ' + status);
+          }
+        });
+
+
+      }
 
     </script>
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCFRydaIcQzZoEaVcSGxEAbfuq3sz-JeiQ&signed_in=true&callback=initMap&libraries=places"
